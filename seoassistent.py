@@ -6,6 +6,27 @@ import os
 # Setting the CSV filename for storing history
 history_file = "response_history.csv"
 
+
+# Function for loading session history
+def display_session_history():
+    if "history" in st.session_state:
+        return st.session_state.history
+    return []
+
+
+# Function to save new responses to the CSV file only for the current session
+def save_history_csv():
+    if "history" in st.session_state and len(st.session_state.history) > 0:
+        new_entry = pd.DataFrame(st.session_state.history)
+        new_entry.to_csv(history_file, mode="w", header=True, index=False)
+
+
+# Function to reset session history
+def reset_history():
+    if "history" in st.session_state:
+        st.session_state.history = []
+
+
 # Sidebar for API Key
 with st.sidebar:
     openai_api_key = st.text_input("OpenAI API-Schlüssel", type="password")
@@ -19,63 +40,57 @@ st.caption(
     "🚀 Generieren Sie Keyword-Listen, SEO-optimierte Blogbeiträge und analysieren Sie Suchvolumen!"
 )
 
-# Set OpenAI API key globally
-openai.api_key = openai_api_key
-
-
-# Function to load session history
-def display_session_history():
-    if "history" in st.session_state:
-        return st.session_state.history
-    return []
-
-
-# Function to save new responses to the CSV file
-def save_history_csv():
-    if "history" in st.session_state and len(st.session_state.history) > 0:
-        new_entry = pd.DataFrame(st.session_state.history)
-        new_entry.to_csv(history_file, mode="a", header=True, index=False)
-
-
-# Function to reset session history
-def reset_history():
-    if "history" in st.session_state:
-        st.session_state.history = []
+# OpenAI client initialization
+client = openai.OpenAI(api_key=openai_api_key)
 
 
 # Function to generate a list of 30 keywords
 def generate_keywords_list(topic):
     prompt = f""" Du bist ein erfahrener SEO-Experte. Deine Aufgabe ist es, eine Liste mit 30 SEO-Keywords für das Thema '{topic}' zu erstellen.  
-    Berücksichtige dabei folgende Kriterien:  
-    - Priorisiere Keywords mit einem hohen monatlichen Suchvolumen (mindestens 1.000 Suchanfragen pro Monat).  
-    - Bevorzuge Suchbegriffe, die in Google Keyword Planner oder anderen SEO-Tools hohe Werte haben.  
-    - Erstelle eine Mischung aus **Head Keywords** (breit gefächerte Begriffe mit hohem Suchvolumen) und **Long-Tail-Keywords** (spezifische Suchanfragen mit klarer Suchintention).  
-    - Vermeide unnötig lange oder zu komplizierte Phrasen.  
-    Gib nur die Liste mit den Keywords aus, ohne zusätzliche Erklärungen.
+Berücksichtige dabei folgende Kriterien:  
+- Priorisiere Keywords mit einem hohen monatlichen Suchvolumen (mindestens 1.000 Suchanfragen pro Monat).  
+- Bevorzuge Suchbegriffe, die in Google Keyword Planner oder anderen SEO-Tools hohe Werte haben.  
+- Erstelle eine Mischung aus **Head Keywords** (breit gefächerte Begriffe mit hohem Suchvolumen) und **Long-Tail-Keywords** (spezifische Suchanfragen mit klarer Suchintention).  
+- Vermeide unnötig lange oder zu komplizierte Phrasen.  
+
+**Beispiel für eine gute Liste:**  
+- Katze kaufen  
+- Katzenrassen Vergleich  
+- Katzenfutter ohne Getreide  
+- Katze anschaffen Kosten  
+- Katzenkratzbaum kaufen  
+- Wohnungskatze oder Freigänger  
+- Beste Katzenrasse für Allergiker  
+- Katzenversicherung Vergleich  
+- Katze allein zuhause lassen  
+- Erstausstattung für Katzen  
+Achte darauf, dass die Liste eine Vielfalt an Keywords enthält. Versuche, nicht jedes Keyword mit dem Thema zu beginnen. Verwende verschiedene Varianten und relevante Begriffe rund um das Thema, um die Liste abwechslungsreicher zu gestalten.
+Gib nur die Liste mit den Keywords aus, ohne zusätzliche Erklärungen.
+    Gruppiere die Keywords nach ihrer Nutzerintention und füge für jede Kategorie passende Long-Tail-Varianten hinzu.
     """
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
         )
-        return response["choices"][0]["message"]["content"].strip().split("\n")
+        return response.choices[0].message.content.strip().split("\n")
     except Exception as e:
         st.error(f"Fehler beim Generieren von Keywords: {e}")
         return None
 
 
-# Function to select the top 10 keywords
+# Function to select top keywords
 def select_top_keywords(keywords):
-    prompt = f"Aus der folgenden Liste von Keywords wähle die top zehn relevantesten basierend auf Relevanz und Suchpotential aus: {', '.join(keywords)}."
+    prompt = f"Aus der folgenden Liste von Keywords wähle die zehn relevantesten basierend auf Relevanz und Suchpotential aus: {', '.join(keywords)}."
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "user", "content": prompt},
                 {"role": "system", "content": "Du bist ein erfahrener SEO-Experte."},
             ],
         )
-        return response["choices"][0]["message"]["content"].strip().split("\n")
+        return response.choices[0].message.content.strip().split("\n")
     except Exception as e:
         st.error(f"Fehler beim Auswählen der Top-Keywords: {e}")
         return None
@@ -85,14 +100,14 @@ def select_top_keywords(keywords):
 def group_keywords(keywords):
     prompt = f"Gruppiere die folgenden Keywords in relevante Themen mit kurzen Beschreibungen: {', '.join(keywords)}."
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "user", "content": prompt},
                 {"role": "system", "content": "Du bist ein erfahrener SEO-Experte."},
             ],
         )
-        return response["choices"][0]["message"]["content"].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         st.error(f"Fehler beim Gruppieren von Keywords: {e}")
         return None
@@ -101,16 +116,16 @@ def group_keywords(keywords):
 # Function to generate an SEO-optimized blog post
 def generate_blog_post(topic, keywords):
     prompt = f"""Schreibe einen ausführlichen, SEO-optimierten Blogpost über das Thema '{topic}'.
-    Verwende dabei folgende Keywords: {', '.join(keywords)}.
-    Der Blogpost sollte eine klare Struktur mit Überschriften (H2, H3) haben, relevante Absätze enthalten und sowohl informativ als auch ansprechend für den Leser sein.
-    Gib nur den Blogpost-Text aus, ohne zusätzliche Erklärungen.
-    """
+Verwende dabei folgende Keywords: {', '.join(keywords)}.
+Der Blogpost sollte eine klare Struktur mit Überschriften (H2, H3) haben, relevante Absätze enthalten und sowohl informativ als auch ansprechend für den Leser sein.
+Gib nur den Blogpost-Text aus, ohne zusätzliche Erklärungen.
+"""
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
         )
-        return response["choices"][0]["message"]["content"].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         st.error(f"Fehler beim Generieren des Blogposts: {e}")
         return None
@@ -134,9 +149,9 @@ if st.button("Keywords generieren") and openai_api_key:
             st.text_area("Generierte Keywords (30):", "\n".join(keywords), height=300)
             st.session_state.history.append(
                 {"type": "Keywords", "content": "\n".join(keywords)}
-            )
+            )  # Save to session history
 
-# Generate top 10 keywords button
+# Select top 10 keywords button
 if "keywords" in st.session_state and st.button("Top 10 Keywords auswählen"):
     with st.spinner("Top 10 Keywords werden ausgewählt..."):
         top_keywords = select_top_keywords(st.session_state.keywords)
@@ -144,7 +159,7 @@ if "keywords" in st.session_state and st.button("Top 10 Keywords auswählen"):
             st.text_area("Top 10 Keywords:", "\n".join(top_keywords), height=300)
             st.session_state.history.append(
                 {"type": "Top 10 Keywords", "content": "\n".join(top_keywords)}
-            )
+            )  # Save to session history
 
 # Group keywords button
 if "keywords" in st.session_state and st.button("Keywords gruppieren"):
@@ -154,7 +169,7 @@ if "keywords" in st.session_state and st.button("Keywords gruppieren"):
             st.text_area("Gruppierte Keywords:", grouped_keywords, height=300)
             st.session_state.history.append(
                 {"type": "Gruppierte Keywords", "content": grouped_keywords}
-            )
+            )  # Save to session history
 
 # Generate blog post button
 if "keywords" in st.session_state and st.button("Blogpost generieren"):
@@ -162,7 +177,9 @@ if "keywords" in st.session_state and st.button("Blogpost generieren"):
         blog_post = generate_blog_post(topic, st.session_state.keywords)
         if blog_post:
             st.text_area("Generierter Blogpost:", blog_post, height=500)
-            st.session_state.history.append({"type": "Blogpost", "content": blog_post})
+            st.session_state.history.append(
+                {"type": "Blogpost", "content": blog_post}
+            )  # Save to session history
 
 # Display response history
 st.write("### Antwortverlauf")
