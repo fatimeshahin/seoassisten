@@ -1,9 +1,9 @@
-import os
+import streamlit as st
 import openai
 import pandas as pd
-import streamlit as st
+import os
 
-# setting the CSV filename for storing history
+# seting the CSV filename for storing history
 history_file = "response_history.csv"
 
 
@@ -61,18 +61,23 @@ Berücksichtige dabei folgende Kriterien:
 - Katzenversicherung Vergleich  
 - Katze allein zuhause lassen  
 - Erstausstattung für Katzen  
-Achte darauf, dass die Liste eine Vielfalt an Keywords enthält. Versuche, nicht jedes Keyword mit dem Thema zu beginnen. Verwende verschiedene Varianten und relevante Begriffe rund um das Thema, um die Liste abwechslungsreicher zu gestalten.
+- Achte darauf, dass die Liste eine Vielfalt an Keywords enthält. Versuche, nicht jedes Keyword mit dem Thema zu beginnen. Verwende verschiedene Varianten und relevante Begriffe rund um das Thema, um die Liste abwechslungsreicher zu gestalten.
 Gib nur die Liste mit den Keywords aus, ohne zusätzliche Erklärungen.
     Gruppiere die Keywords nach ihrer Nutzerintention und füge für jede Kategorie passende Long-Tail-Varianten hinzu.
     """
     try:
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            prompt=prompt,
-            max_tokens=1500,
+            messages=[
+                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": "Du bist ein erfahrener SEO-Experte. Deine Aufgabe ist es, hochwertige SEO-optimierte Inhalte zu generieren, Keywords zu analysieren und basierend auf bewährten SEO-Prinzipien Empfehlungen zu geben.",
+                },
+            ],
             api_key=openai_api_key,
         )
-        return response["choices"][0]["text"].strip().split("\n")
+        return response["choices"][0]["message"]["content"].strip().split("\n")
     except Exception as e:
         st.error(f"Fehler beim Generieren von Keywords: {e}")
         return None
@@ -82,13 +87,18 @@ Gib nur die Liste mit den Keywords aus, ohne zusätzliche Erklärungen.
 def select_top_keywords(keywords):
     prompt = f"Aus der folgenden Liste von Keywords wähle die top zehn relevantesten basierend auf Relevanz und Suchpotential aus: {', '.join(keywords)}."
     try:
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            prompt=prompt,
-            max_tokens=1000,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Du bist ein erfahrener SEO-Experte. Deine Aufgabe ist es, hochwertige SEO-optimierte Inhalte zu generieren, Keywords zu analysieren und basierend auf bewährten SEO-Prinzipien Empfehlungen zu geben.",
+                },
+                {"role": "user", "content": prompt},
+            ],
             api_key=openai_api_key,
         )
-        return response["choices"][0]["text"].strip().split("\n")
+        return response["choices"][0]["message"]["content"].strip().split("\n")
     except Exception as e:
         st.error(f"Fehler beim Auswählen der Top-Keywords: {e}")
         return None
@@ -98,13 +108,18 @@ def select_top_keywords(keywords):
 def group_keywords(keywords):
     prompt = f"Gruppiere die folgenden Top 10 Keywords in relevante Themen mit kurzen Beschreibungen: {', '.join(keywords)}."
     try:
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            prompt=prompt,
-            max_tokens=1500,
+            messages=[
+                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": "Du bist ein erfahrener SEO-Experte. Deine Aufgabe ist es, hochwertige SEO-optimierte Inhalte zu generieren, Keywords zu analysieren und basierend auf bewährten SEO-Prinzipien Empfehlungen zu geben.",
+                },
+            ],
             api_key=openai_api_key,
         )
-        return response["choices"][0]["text"].strip()
+        return response["choices"][0]["message"]["content"].strip()
     except Exception as e:
         st.error(f"Fehler beim Gruppieren von Keywords: {e}")
         return None
@@ -121,28 +136,38 @@ def write_blog_post(topic, keywords):
     Stellst du sicher, dass du einen Call to Action hinzufügen.
     """
     try:
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            prompt=prompt,
-            max_tokens=1500,
+            messages=[
+                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": "Du bist ein erfahrener SEO-Experte. Deine Aufgabe ist es, hochwertige SEO-optimierte Inhalte zu generieren, Keywords zu analysieren und basierend auf bewährten SEO-Prinzipien Empfehlungen zu geben.",
+                },
+            ],
             api_key=openai_api_key,
         )
-        return response["choices"][0]["text"].strip()
+        return response["choices"][0]["message"]["content"].strip()
     except Exception as e:
         st.error(f"Fehler beim Generieren des Blogbeitrags: {e}")
         return None
 
 
 # function for user prompt
-def user_response(user_prompt_input):
+def user_prompt_response(prompt_response):
     try:
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
-            prompt=user_prompt_input,
-            max_tokens=1500,
+            messages=[
+                {"role": "user", "content": prompt_response},
+                {
+                    "role": "system",
+                    "content": "Du bist ein erfahrener SEO-Experte. Deine Aufgabe ist es, hochwertige SEO-optimierte Inhalte zu generieren, Keywords zu analysieren und basierend auf bewährten SEO-Prinzipien Empfehlungen zu geben.",
+                },
+            ],
             api_key=openai_api_key,
         )
-        return response["choices"][0]["text"].strip()
+        return response["choices"][0]["message"]["content"].strip()
     except Exception as e:
         st.error(
             f"Fehler beim Generieren einer Antwort auf die benutzerdefinierte Eingabeaufforderung: {e}"
@@ -210,25 +235,33 @@ if st.button("Blogbeitrag generieren") and openai_api_key:
                 )  # Save to session history
 
 # user prompt area
-user_prompt_input = st.text_area("Write your prompt here")
-user_response_content = None
-if st.button("Run") and openai_api_key:
+user_prompt = st.text_area(
+    "Geben Sie eine benutzerdefinierte Eingabeaufforderung für AI ein (z. B. eine Frage stellen oder Informationen anfordern):"
+)
+if st.button("Benutzerdefinierte Antwort generieren") and openai_api_key:
     with st.spinner("Antwort generieren..."):
-        user_response_content = user_response(
-            user_prompt_input
-        )  # Changed to call the function correctly
-if user_response_content:
-    st.text_area("Generierte Antwort:", user_response_content, height=300)
-    st.session_state.history.append(
-        {"type": "Benutzerdefinierte Antwort", "content": user_response_content}
-    )  # Save to session history
+        user_response = user_prompt_response(user_prompt)
+        if user_response:
+            st.text_area("Generierte Antwort:", user_response, height=300)
+            st.session_state.history.append(
+                {"type": "Benutzerdefinierte Antwort", "content": user_response}
+            )  # Save to session history
 
 # display response history
-st.write("Antwortverlauf")
+st.write("### Antwortverlauf")
 if st.session_state.history:
     for entry in st.session_state.history:
-        st.write(f"{entry['type']}: {entry['content']}")
+        st.write(f"**{entry['type']}:** {entry['content']}")
 
-# Save history to CSV
-if st.button("History speichern") and openai_api_key:
+# button to download the CSV file
+if st.button("Antwortverlauf herunterladen"):
     save_history_csv()
+    with open(history_file, "rb") as f:
+        st.download_button(
+            "Download CSV", f, file_name="response_history.csv", mime="text/csv"
+        )
+
+# reset history when new session started
+if topic:
+    if st.button("Neues Thema starten"):
+        reset_history()
